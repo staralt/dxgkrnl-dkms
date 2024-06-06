@@ -1,8 +1,8 @@
 # GPU-P (dxgkrnl) on Hyper-V Linux with Latest Kernel
 
-This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
+[dxgkrnl] is a DirectX driver integrated into the WSL2 Linux kernel.
 
-[dxgkrnl] is a DirectX driver integrated into the WSL2 Linux kernel. However, it is only included in the WSL2 kernel. This project ports it to the regular Linux kernel.
+This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 
 ### Available on
 
