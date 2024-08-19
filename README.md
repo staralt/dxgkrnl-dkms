@@ -129,13 +129,13 @@ Please log in to the shell as the user used in the previous chapter and follow t
 To install dxgkrnl, please run the following command in the VM shell:
 
 ```bash
-curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -e
+curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -es
 ```
 
 If you want to clean already installed modules. You can use the following command:
 
 ```bash
-curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -e -- clean all
+curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -es -- clean all
 ```
 
 <br/>
