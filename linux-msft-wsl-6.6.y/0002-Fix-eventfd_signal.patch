@@ -1,0 +1,16 @@
+diff --git drivers/hv/dxgkrnl/dxgmodule.c drivers/hv/dxgkrnl/dxgmodule.c
+index 9b28c2c3c..1360823b8 100644
+--- /drivers/hv/dxgkrnl/dxgmodule.c
++++ /drivers/hv/dxgkrnl/dxgmodule.c
+@@ -188,7 +188,11 @@ void signal_host_cpu_event(struct dxghostevent *eventhdr)
+ 	}
+ 	if (event->cpu_event) {
+ 		DXG_TRACE("signal cpu event");
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,6,0)
++		eventfd_signal(event->cpu_event);
++#else
+ 		eventfd_signal(event->cpu_event, 1);
++#endif
+ 		if (event->destroy_after_signal)
+ 			eventfd_ctx_put(event->cpu_event);
+ 	} else {
