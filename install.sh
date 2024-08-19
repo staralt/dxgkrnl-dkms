@@ -5,33 +5,56 @@ install_dependencies() {
 }
 
 update_git() {
-    if [ ! -e "/tmp/WSL2-Linux-Kernel" ]; then
-        git clone --no-checkout --depth=1 https://github.com/microsoft/WSL2-Linux-Kernel.git /tmp/WSL2-Linux-Kernel
+    SYSTEM_KERNEL_VERSION="`uname -r | grep -Po ^[0-9]+\.[0-9]+`"
+    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] & [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
+        TARGET_BRANCH="linux-msft-wsl-6.6.y";
+    else
+        TARGET_BRANCH="linux-msft-wsl-5.15.y";
     fi
 
-    cd /tmp/WSL2-Linux-Kernel
+    if [ ! -e "/tmp/WSL2-Linux-Kernel" ]; then
+        git clone --branch=$TARGET_BRANCH --no-checkout --depth=1 https://github.com/microsoft/WSL2-Linux-Kernel.git /tmp/WSL2-Linux-Kernel
+    fi
+
+    cd /tmp/WSL2-Linux-Kernel;
+
+    if [ "`git branch -a | grep -o $TARGET_BRANCH`" == "" ]; then
+        git fetch --depth=1 origin $TARGET_BRANCH:$TARGET_BRANCH;
+    fi
+
     git sparse-checkout set --no-cone /drivers/hv/dxgkrnl /include/uapi/misc/d3dkmthk.h
-    git checkout -f
+    git checkout -f $TARGET_BRANCH
 }
 
 get_version() {
     cd /tmp/WSL2-Linux-Kernel
 
-    BRANCH=$(git name-rev --name-only --tags HEAD)
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     VERSION=$(git rev-parse --short HEAD)
 }
 
 install() {
     cd /tmp/WSL2-Linux-Kernel
 
-    # Patch source files
-    curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/0001-Add-a-gpu-pv-support.patch | git apply -v
-    echo
-    curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/0002-Add-a-multiple-kernel-version-support.patch | git apply -v
-    echo
-    curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/0003-Fix-gpadl-has-incomplete-type-error.patch | git apply -v
-    echo
-    
+    case $CURRENT_BRANCH in
+        "linux-msft-wsl-5.15.y")
+            # Patch source files
+            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch | git apply -v;
+            echo;
+            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch | git apply -v;
+            echo;
+            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch | git apply -v;
+            echo;;
+        "linux-msft-wsl-6.6.y")
+            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch | git apply -v;
+            echo;
+            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch | git apply -v;
+            echo;;
+        *)
+            >&2 echo "Fatal: \"$CURRENT_BRANCH\" is not available";
+            exit 1;;
+    esac
+
     # Copy source files
     echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/drivers/hv/dxgkrnl\" -> \"/usr/src/dxgkrnl-$VERSION\""
     cp -r ./drivers/hv/dxgkrnl /usr/src/dxgkrnl-$VERSION
@@ -69,7 +92,7 @@ all() {
     update_git
     get_version
 
-    echo -e "\nModule Version: ${BRANCH} @ ${VERSION}\n"
+    echo -e "\nModule Version: ${CURRENT_BRANCH} @ ${VERSION}\n"
     echo -e "Installing a module. Please wait...\n"
     install
     install_dkms
