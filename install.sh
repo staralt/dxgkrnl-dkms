@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+WORKDIR="$(dirname $(realpath $0))"
+
 install_dependencies() {
     apt install -y linux-headers-`uname -r` git dkms
 }
@@ -38,18 +40,34 @@ install() {
 
     case $CURRENT_BRANCH in
         "linux-msft-wsl-5.15.y")
-            # Patch source files
-            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch | git apply -v;
-            echo;
-            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch | git apply -v;
-            echo;
-            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch | git apply -v;
-            echo;;
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
+                    linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch \
+                    linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
+
+            for PATCH in $PATCHES; do
+                # Patch source files
+                if [ -e "$WORKDIR/$PATCH" ]; then
+                    cat "$WORKDIR/$PATCH" | git apply -v;
+                else
+                    curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
+                fi
+                echo;
+            done
+            ;;
         "linux-msft-wsl-6.6.y")
-            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch | git apply -v;
-            echo;
-            curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch | git apply -v;
-            echo;;
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
+                    linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
+
+            for PATCH in $PATCHES; do
+                # Patch source files
+                if [ -e "$WORKDIR/$PATCH" ]; then
+                    cat "$WORKDIR/$PATCH" | git apply -v;
+                else
+                    curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
+                fi
+                echo;
+            done
+            ;;
         *)
             >&2 echo "Fatal: \"$CURRENT_BRANCH\" is not available";
             exit 1;;
