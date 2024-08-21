@@ -204,4 +204,4 @@ Repositories:
 
 
 
-[dxgkrnl]: https://github.com/microsoft/WSL2-Linux-Kernel/tree/linux-msft-wsl-5.15.y/drivers/hv/dxgkrnl
+[dxgkrnl]: https://github.com/microsoft/WSL2-Linux-Kernel/tree/linux-msft-wsl-6.6.y/drivers/hv/dxgkrnl
