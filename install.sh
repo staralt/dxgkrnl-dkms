@@ -1,9 +1,18 @@
 #!/bin/bash -e
 
 WORKDIR="$(dirname $(realpath $0))"
+LINUX_DISTRO="$(cat /etc/*-release | grep -Po "(?<=^ID_LIKE=).+$")"
 
 install_dependencies() {
-    apt install -y linux-headers-`uname -r` git dkms
+    case $LINUX_DISTRO in
+        "debian"|"Debian")
+            apt install -y linux-headers-`uname -r` git dkms;;
+        "fedora"|"Fedora")
+            yum -y install linux-headers-`uname -r` git dkms;;
+        *)
+            >&2 echo "Fatal: The system distro '$LINUX_DISTRO' is unsupported"
+            exit 1;;
+    esac
 }
 
 update_git() {
