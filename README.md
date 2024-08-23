@@ -6,18 +6,12 @@ This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 
 ### Available on
 
-- Ubuntu Server 24.04 LTS (Tensorflow is working)
-   - 6.8.0-1007-azure
-   - 6.8.0-31-generic
+- Ubuntu | Ubuntu Server
+   - 24.04 LTS @ 6.8.0
+   - 22.04 LTS @ 5.15.0 ~ 6.5.0
 
-- Ubuntu 22.04 LTS (just installed, not tested)
-   - 6.5.0-18-generic
-   - 6.2.0-39-generic
-   - 6.1.0-1036-oem
-   - 6.0.0-1016-oem
-   - 5.19.0-50-generic
-   - 5.17.0-1035-oem
-   - 5.15.0-94-generic
+-  TrueNAS SCALE
+   - 23.10.2 @ 6.6.44-production+truenas
 
 ### Requirements
 
