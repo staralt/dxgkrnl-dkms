@@ -8,13 +8,13 @@ install_dependencies() {
     if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
         apt update;
         apt install -y git dkms;
-        if [ ! -e "/lib/modules/`uname -r`" ]; then
-            apt install -y linux-headers-`uname -r`;
+        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}" ]; then
+            apt install -y linux-headers-${TARGET_KERNEL_VERSION};
         fi
     elif [[ "$LINUX_DISTRO" == *"fedora"* ]]; then
         yum -y install git dkms;
-        if [ ! -e "/lib/modules/`uname -r`"]; then
-            yum -y install linux-headers-`uname -r`;
+        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}"]; then
+            yum -y install linux-headers-${TARGET_KERNEL_VERSION};
         fi
     else
         >&2 echo "Fatal: The system distro is unsupported";
@@ -27,7 +27,7 @@ install_dependencies() {
 }
 
 update_git() {
-    SYSTEM_KERNEL_VERSION="`uname -r | grep -Po ^[0-9]+\.[0-9]+`"
+    SYSTEM_KERNEL_VERSION="`echo ${TARGET_KERNEL_VERSION} | grep -Po ^[0-9]+\.[0-9]+`"
     if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] & [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
     else
@@ -117,13 +117,20 @@ EOF
 }
 
 install_dkms() {
-    dkms add dxgkrnl/$VERSION
-    dkms build dxgkrnl/$VERSION
-    dkms install dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION
 }
 
 all() {
-    echo -e "\nInstalling dependencies...\n"
+    TARGET_KERNEL_VERSION="$1";
+    if [ "$TARGET_KERNEL_VERSION" == "" ]; then
+        TARGET_KERNEL_VERSION=`uname -r`
+    fi
+
+    echo -e "\nTarget Kernel Version: ${TARGET_KERNEL_VERSION}\n"
+
+    echo -e "Installing dependencies...\n"
     install_dependencies
 
     echo
@@ -139,7 +146,7 @@ all() {
 help() {
     echo
     echo "Usage:"
-    echo "  $0 - Install a latest module."
+    echo "  $0 (target kernel version) - Install a latest module."
     echo
     echo "  $0 clean all - Remove all modules."
     echo "  $0 clean [version] - Remove a specific version module."
@@ -168,23 +175,26 @@ clean() {
         fi
 
         for TARGET in $TARGETS; do
-            dkms remove "$TARGET"
+            dkms --all remove "$TARGET"
             rm -r "/usr/src/dxgkrnl-${TARGET:8}"
             echo
         done
     else
-        dkms remove "dxgkrnl/$1"
+        dkms --all remove "dxgkrnl/$1"
         rm -r "/usr/src/dxgkrnl-$1"
         echo
     fi
 }
 
 if [ -z $1 ]; then
-    all
+    all `uname -r`
 elif [ "$1" = "clean" ]; then
     shift
     clean "$@"
+elif [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+.+$ ]]; then
+    all $1
 else
+    echo "Incorrect kernel version '$1' (excpeted format is '`ls /lib/modules | head -n1`')";
     help
 fi
 
