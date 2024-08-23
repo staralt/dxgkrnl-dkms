@@ -28,7 +28,7 @@ install_dependencies() {
 
 update_git() {
     SYSTEM_KERNEL_VERSION="`echo ${TARGET_KERNEL_VERSION} | grep -Po ^[0-9]+\.[0-9]+`"
-    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] & [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
+    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] && [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
     else
         TARGET_BRANCH="linux-msft-wsl-5.15.y";
@@ -169,7 +169,7 @@ clean() {
         exit 0
     elif [ "$1" == "all" ]; then
         TARGETS=`dkms status dxgkrnl | grep -E "dxgkrnl/[a-z0-9]+" -o | awk '!a[$0]++'`
-        if [ -z $TARGETS ]; then
+        if [ -z "$TARGETS" ]; then
             echo "Ignored. There is no modules to clean."
             exit 0
         fi
