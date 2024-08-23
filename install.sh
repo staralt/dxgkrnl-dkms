@@ -1,23 +1,34 @@
 #!/bin/bash -e
 
 WORKDIR="$(dirname $(realpath $0))"
-LINUX_DISTRO="$(cat /etc/*-release | grep -Po "(?<=^ID_LIKE=).+$")"
+LINUX_DISTRO="$(cat /etc/*-release)"
+LINUX_DISTRO=${LINUX_DISTRO,,}
 
 install_dependencies() {
-    case $LINUX_DISTRO in
-        "debian"|"Debian")
-            apt install -y linux-headers-`uname -r` git dkms;;
-        "fedora"|"Fedora")
-            yum -y install linux-headers-`uname -r` git dkms;;
-        *)
-            >&2 echo "Fatal: The system distro '$LINUX_DISTRO' is unsupported"
-            exit 1;;
-    esac
+    if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
+        apt update;
+        apt install -y git dkms;
+        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}" ]; then
+            apt install -y linux-headers-${TARGET_KERNEL_VERSION};
+        fi
+    elif [[ "$LINUX_DISTRO" == *"fedora"* ]]; then
+        yum -y install git dkms;
+        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}"]; then
+            yum -y install linux-headers-${TARGET_KERNEL_VERSION};
+        fi
+    else
+        >&2 echo "Fatal: The system distro is unsupported";
+        >&2 echo "If your system is based on 'Debian' or 'Fedora', please report this issue with the following information.";
+        >&2 echo "https://git.staralt.dev/dxgkrnl-dkms/issues";
+        >&2 echo;
+        >&2 cat /etc/*-release;
+        exit 1;
+    fi
 }
 
 update_git() {
-    SYSTEM_KERNEL_VERSION="`uname -r | grep -Po ^[0-9]+\.[0-9]+`"
-    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] & [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
+    SYSTEM_KERNEL_VERSION="`echo ${TARGET_KERNEL_VERSION} | grep -Po ^[0-9]+\.[0-9]+`"
+    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] && [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
     else
         TARGET_BRANCH="linux-msft-wsl-5.15.y";
@@ -64,8 +75,10 @@ install() {
             done
             ;;
         "linux-msft-wsl-6.6.y")
-            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
-                    linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch";
+            if [[ "$TARGET_KERNEL_VERSION" != *"truenas"* ]]; then
+                PATCHES="$PATCHES linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
+            fi
 
             for PATCH in $PATCHES; do
                 # Patch source files
@@ -106,13 +119,20 @@ EOF
 }
 
 install_dkms() {
-    dkms add dxgkrnl/$VERSION
-    dkms build dxgkrnl/$VERSION
-    dkms install dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION
+    dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION
 }
 
 all() {
-    echo -e "\nInstalling dependencies...\n"
+    TARGET_KERNEL_VERSION="$1";
+    if [ "$TARGET_KERNEL_VERSION" == "" ]; then
+        TARGET_KERNEL_VERSION=`uname -r`
+    fi
+
+    echo -e "\nTarget Kernel Version: ${TARGET_KERNEL_VERSION}\n"
+
+    echo -e "Installing dependencies...\n"
     install_dependencies
 
     echo
@@ -128,7 +148,7 @@ all() {
 help() {
     echo
     echo "Usage:"
-    echo "  $0 - Install a latest module."
+    echo "  $0 (target kernel version) - Install a latest module."
     echo
     echo "  $0 clean all - Remove all modules."
     echo "  $0 clean [version] - Remove a specific version module."
@@ -151,29 +171,32 @@ clean() {
         exit 0
     elif [ "$1" == "all" ]; then
         TARGETS=`dkms status dxgkrnl | grep -E "dxgkrnl/[a-z0-9]+" -o | awk '!a[$0]++'`
-        if [ -z $TARGETS ]; then
+        if [ -z "$TARGETS" ]; then
             echo "Ignored. There is no modules to clean."
             exit 0
         fi
 
         for TARGET in $TARGETS; do
-            dkms remove "$TARGET"
+            dkms --all remove "$TARGET"
             rm -r "/usr/src/dxgkrnl-${TARGET:8}"
             echo
         done
     else
-        dkms remove "dxgkrnl/$1"
+        dkms --all remove "dxgkrnl/$1"
         rm -r "/usr/src/dxgkrnl-$1"
         echo
     fi
 }
 
 if [ -z $1 ]; then
-    all
+    all `uname -r`
 elif [ "$1" = "clean" ]; then
     shift
     clean "$@"
+elif [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+.+$ ]]; then
+    all $1
 else
+    echo "Incorrect kernel version '$1' (excpeted format is '`ls /lib/modules | head -n1`')";
     help
 fi
 
