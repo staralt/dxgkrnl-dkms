@@ -1,18 +1,29 @@
 #!/bin/bash -e
 
 WORKDIR="$(dirname $(realpath $0))"
-LINUX_DISTRO="$(cat /etc/*-release | grep -Po "(?<=^ID_LIKE=).+$")"
+LINUX_DISTRO="$(cat /etc/*-release)"
+LINUX_DISTRO=${LINUX_DISTRO,,}
 
 install_dependencies() {
-    case $LINUX_DISTRO in
-        "debian"|"Debian")
-            apt install -y linux-headers-`uname -r` git dkms;;
-        "fedora"|"Fedora")
-            yum -y install linux-headers-`uname -r` git dkms;;
-        *)
-            >&2 echo "Fatal: The system distro '$LINUX_DISTRO' is unsupported"
-            exit 1;;
-    esac
+    if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
+        apt update;
+        apt install -y git dkms;
+        if [ ! -e "/lib/modules/`uname -r`" ]; then
+            apt install -y linux-headers-`uname -r`;
+        fi
+    elif [[ "$LINUX_DISTRO" == *"fedora"* ]]; then
+        yum -y install git dkms;
+        if [ ! -e "/lib/modules/`uname -r`"]; then
+            yum -y install linux-headers-`uname -r`;
+        fi
+    else
+        >&2 echo "Fatal: The system distro is unsupported";
+        >&2 echo "If your system is based on 'Debian' or 'Fedora', please report this issue with the following information.";
+        >&2 echo "https://git.staralt.dev/dxgkrnl-dkms/issues";
+        >&2 echo;
+        >&2 cat /etc/*-release;
+        exit 1;
+    fi
 }
 
 update_git() {
