@@ -75,8 +75,10 @@ install() {
             done
             ;;
         "linux-msft-wsl-6.6.y")
-            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
-                    linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch";
+            if [[ "$TARGET_KERNEL_VERSION" != *"truenas"* ]]; then
+                PATCHES="$PATCHES linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
+            fi
 
             for PATCH in $PATCHES; do
                 # Patch source files
