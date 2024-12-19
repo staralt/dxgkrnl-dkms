@@ -61,8 +61,8 @@ install() {
     case $CURRENT_BRANCH in
         "linux-msft-wsl-5.15.y")
             PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
-                    linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch \
-                    linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
+                    linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch";
+                    #linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
 
             for PATCH in $PATCHES; do
                 # Patch source files
