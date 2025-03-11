@@ -105,11 +105,12 @@ ssh ${username}@${ip} "mkdir -p ~/wsl/drivers; mkdir -p ~/wsl/lib;"
 # https://github.com/brokeDude2901/dxgkrnl_ubuntu/blob/main/README.md#3-copy-windows-host-gpu-driver-to-ubuntu-vm
 
 (Get-CimInstance -ClassName Win32_VideoController -Property *).InstalledDisplayDrivers | Select-String "C:\\Windows\\System32\\DriverStore\\FileRepository\\[a-zA-Z0-9\\._]+\\" | foreach {
-    $l=$_.Matches.Value.Substring(0, $_.Matches.Value.Length-1)
-    scp -r $l ${username}@${ip}:~/wsl/drivers/
+    $l = $_.Matches.Value.Substring(0, $_.Matches.Value.Length - 1)
+    scp -r $l ${username}@${ip}:~/wsl/drivers/
 }
 
 scp -r C:\Windows\System32\lxss\lib ${username}@${ip}:~/wsl/
+scp -r "C:\Program Files\WSL\lib" ${username}@${ip}:~/wsl/
 ```
 
 If multiple GPUs are installed, the command will ask for three or more passwords.
@@ -139,9 +140,14 @@ curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash 
 Move drivers to specific locations and set permissions:
 
 ```bash
+sudo rm -rf /usr/lib/wsl
 sudo mv ~/wsl /usr/lib/wsl
-sudo chmod -R 555 /usr/lib/wsl
+sudo chmod -R 555 /usr/lib/wsl/drivers/
+sudo chmod -R 755 /usr/lib/wsl/lib/
 sudo chown -R root:root /usr/lib/wsl
+sudo sed -i '/^PATH=/ {/usr\/lib\/wsl\/lib/! s|"$|:/usr/lib/wsl/lib"|}' /etc/environment
+sudo ln -s /usr/lib/wsl/lib/libd3d12core.so /usr/lib/wsl/lib/libD3D12Core.so
+sudo ln -s /usr/lib/wsl/lib/libnvoptix.so.1 /usr/lib/wsl/lib/libnvoptix_loader.so.1
 ```
 
 Link dynamic libraries:
