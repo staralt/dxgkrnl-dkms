@@ -153,6 +153,8 @@ sudo ln -s /usr/lib/wsl/lib/libnvoptix.so.1 /usr/lib/wsl/lib/libnvoptix_loader.s
 Link dynamic libraries:
 
 ```bash
+sudo rm /usr/lib/wsl/lib/libcuda.so.1
+sudo ln -s /usr/lib/wsl/lib/libcuda.so /usr/lib/wsl/lib/libcuda.so.1
 sudo sh -c 'echo "/usr/lib/wsl/lib" > /etc/ld.so.conf.d/ld.wsl.conf'
 sudo ldconfig
 ```
