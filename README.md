@@ -145,16 +145,19 @@ sudo mv ~/wsl /usr/lib/wsl
 sudo chmod -R 555 /usr/lib/wsl/drivers/
 sudo chmod -R 755 /usr/lib/wsl/lib/
 sudo chown -R root:root /usr/lib/wsl
-sudo sed -i '/^PATH=/ {/usr\/lib\/wsl\/lib/! s|"$|:/usr/lib/wsl/lib"|}' /etc/environment
-sudo ln -s /usr/lib/wsl/lib/libd3d12core.so /usr/lib/wsl/lib/libD3D12Core.so
-sudo ln -s /usr/lib/wsl/lib/libnvoptix.so.1 /usr/lib/wsl/lib/libnvoptix_loader.so.1
+```
+
+Create symbolic link:
+```bash
+sudo ln -sf /usr/lib/wsl/lib/libd3d12core.so /usr/lib/wsl/lib/libD3D12Core.so
+sudo ln -sf /usr/lib/wsl/lib/libnvoptix.so.1 /usr/lib/wsl/lib/libnvoptix_loader.so.1
+sudo ln -sf /usr/lib/wsl/lib/libcuda.so /usr/lib/wsl/lib/libcuda.so.1
 ```
 
 Link dynamic libraries:
 
 ```bash
-sudo rm /usr/lib/wsl/lib/libcuda.so.1
-sudo ln -s /usr/lib/wsl/lib/libcuda.so /usr/lib/wsl/lib/libcuda.so.1
+sudo sed -i '/^PATH=/ {/usr\/lib\/wsl\/lib/! s|"$|:/usr/lib/wsl/lib"|}' /etc/environment
 sudo sh -c 'echo "/usr/lib/wsl/lib" > /etc/ld.so.conf.d/ld.wsl.conf'
 sudo ldconfig
 ```
