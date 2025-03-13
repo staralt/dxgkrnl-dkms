@@ -110,8 +110,10 @@ install() {
 
     # Patch a Makefile
     sed -i 's/\$(CONFIG_DXGKRNL)/m/' /usr/src/dxgkrnl-$VERSION/Makefile
-    echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
-
+    echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_ \
+                       -I/usr/src/linux-headers-\${kernelver}/include/linux \
+                       -include /usr/src/linux-headers-\${kernelver}/include/linux/vmalloc.h" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
+                       
     # Create a config of DKMS
     # https://gist.github.com/krzys-h/e2def49966aa42bbd3316dfb794f4d6a
     cat > /usr/src/dxgkrnl-$VERSION/dkms.conf << EOF
