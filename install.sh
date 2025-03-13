@@ -4,6 +4,9 @@ WORKDIR="$(dirname $(realpath $0))"
 LINUX_DISTRO="$(cat /etc/*-release)"
 LINUX_DISTRO=${LINUX_DISTRO,,}
 
+KERNEL_6_6_NEWER_REGEX="^(6\.[6-9]\.|6\.[0-9]{2,}\.)"
+KERNEL_5_15_NEWER_REGEX="^(5\.1[5-9]+\.)"
+
 install_dependencies() {
     if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
         apt update;
@@ -27,11 +30,13 @@ install_dependencies() {
 }
 
 update_git() {
-    SYSTEM_KERNEL_VERSION="`echo ${TARGET_KERNEL_VERSION} | grep -Po ^[0-9]+\.[0-9]+`"
-    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] && [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
+    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
-    else
+    elif [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_5_15_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-5.15.y";
+    else
+        >&2 echo "Fatal: Unsupported kernel version (5.15.0 <=)";
+        exit 1;
     fi
 
     if [ ! -e "/tmp/WSL2-Linux-Kernel" ]; then
