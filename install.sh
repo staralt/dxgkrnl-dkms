@@ -5,17 +5,27 @@ LINUX_DISTRO="$(cat /etc/*-release)"
 LINUX_DISTRO=${LINUX_DISTRO,,}
 
 install_dependencies() {
+    NEED_TO_INSTALL=""
+    if [ ! -e "/bin/git" ] && [ ! -e "/usr/bin/git" ]; then
+        NEED_TO_INSTALL="git"; 
+    fi
+    if [ ! -e "/sbin/dkms" ] && [ ! -e "/bin/dkms" ] && [ ! -e "/usr/bin/dkms" ]; then
+        NEED_TO_INSTALL="$NEED_TO_INSTALL dkms"
+    fi
+    if [ ! -e "/usr/src/linux-headers-${TARGET_KERNEL_VERSION}" ]; then
+        NEED_TO_INSTALL="$NEED_TO_INSTALL linux-headers-${TARGET_KERNEL_VERSION}";
+    fi
+
+    if [[ -z "$NEED_TO_INSTALL" ]]; then
+        echo "All dependencies are already installed."
+        return 0;
+    fi
+
     if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
         apt update;
-        apt install -y git dkms;
-        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}" ]; then
-            apt install -y linux-headers-${TARGET_KERNEL_VERSION};
-        fi
+        apt install -y $NEED_TO_INSTALL;
     elif [[ "$LINUX_DISTRO" == *"fedora"* ]]; then
-        yum -y install git dkms;
-        if [ ! -e "/lib/modules/${TARGET_KERNEL_VERSION}"]; then
-            yum -y install linux-headers-${TARGET_KERNEL_VERSION};
-        fi
+        yum -y install $NEED_TO_INSTALL;
     else
         >&2 echo "Fatal: The system distro is unsupported";
         >&2 echo "If your system is based on 'Debian' or 'Fedora', please report this issue with the following information.";
