@@ -113,7 +113,13 @@ install() {
     echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_ \
                        -I/usr/src/linux-headers-\${kernelver}/include/linux \
                        -include /usr/src/linux-headers-\${kernelver}/include/linux/vmalloc.h" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
-                       
+
+    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
+    else
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_5_15_NEWER_REGEX
+    fi
+
     # Create a config of DKMS
     # https://gist.github.com/krzys-h/e2def49966aa42bbd3316dfb794f4d6a
     cat > /usr/src/dxgkrnl-$VERSION/dkms.conf << EOF
@@ -122,6 +128,7 @@ PACKAGE_VERSION="$VERSION"
 BUILT_MODULE_NAME="dxgkrnl"
 DEST_MODULE_LOCATION="/kernel/drivers/hv/dxgkrnl/"
 AUTOINSTALL="yes"
+BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 }
 
