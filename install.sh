@@ -4,6 +4,9 @@ WORKDIR="$(dirname $(realpath $0))"
 LINUX_DISTRO="$(cat /etc/*-release)"
 LINUX_DISTRO=${LINUX_DISTRO,,}
 
+KERNEL_6_6_NEWER_REGEX="^(6\.[6-9]\.|6\.[0-9]{2,}\.)"
+KERNEL_5_15_NEWER_REGEX="^(5\.1[5-9]+\.)"
+
 install_dependencies() {
     NEED_TO_INSTALL=""
     if [ ! -e "/bin/git" ] && [ ! -e "/usr/bin/git" ]; then
@@ -37,11 +40,13 @@ install_dependencies() {
 }
 
 update_git() {
-    SYSTEM_KERNEL_VERSION="`echo ${TARGET_KERNEL_VERSION} | grep -Po ^[0-9]+\.[0-9]+`"
-    if [ "${SYSTEM_KERNEL_VERSION:0:1}" -ge "6" ] && [ "${SYSTEM_KERNEL_VERSION:2}" -ge "6" ]; then
+    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
-    else
+    elif [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_5_15_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-5.15.y";
+    else
+        >&2 echo "Fatal: Unsupported kernel version (5.15.0 <=)";
+        exit 1;
     fi
 
     if [ ! -e "/tmp/WSL2-Linux-Kernel" ]; then
@@ -72,8 +77,10 @@ install() {
         "linux-msft-wsl-5.15.y")
             PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
                     linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch";
-                    #linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
-
+            if [[ "$TARGET_KERNEL_VERSION" != *"azure"* ]]; then
+                    PATCHES="$PATCHES linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
+            fi
+            
             for PATCH in $PATCHES; do
                 # Patch source files
                 if [ -e "$WORKDIR/$PATCH" ]; then
@@ -115,7 +122,15 @@ install() {
 
     # Patch a Makefile
     sed -i 's/\$(CONFIG_DXGKRNL)/m/' /usr/src/dxgkrnl-$VERSION/Makefile
-    echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
+    echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_ \
+                       -I/usr/src/linux-headers-\${kernelver}/include/linux \
+                       -include /usr/src/linux-headers-\${kernelver}/include/linux/vmalloc.h" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
+
+    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
+    else
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_5_15_NEWER_REGEX
+    fi
 
     # Create a config of DKMS
     # https://gist.github.com/krzys-h/e2def49966aa42bbd3316dfb794f4d6a
@@ -125,6 +140,7 @@ PACKAGE_VERSION="$VERSION"
 BUILT_MODULE_NAME="dxgkrnl"
 DEST_MODULE_LOCATION="/kernel/drivers/hv/dxgkrnl/"
 AUTOINSTALL="yes"
+BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 }
 
