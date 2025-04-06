@@ -7,8 +7,8 @@ This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 ### Available on
 
 - Ubuntu | Ubuntu Server
-   - 24.04 LTS @ 6.8.0
-   - 22.04 LTS @ 5.15.0 ~ 6.5.0
+   - 24.04 LTS @ 6.8.0 - 6.12.0
+   - 22.04 LTS @ 5.15.0 - 6.5.0
 
 -  TrueNAS SCALE
    - 23.10.2 @ 6.6.44-production+truenas
