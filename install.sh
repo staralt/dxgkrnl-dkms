@@ -212,7 +212,9 @@ AUTOINSTALL="yes"
 BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 
-    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION
+    echo
+    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION | [ "$FORCE" != "" ]
+	echo
     dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION $FORCE
     dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION $FORCE
 }
@@ -252,7 +254,9 @@ AUTOINSTALL="yes"
 BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 
-    dkms -k ${TARGET_KERNEL_VERSION} add vgem/$VERSION
+    echo
+    dkms -k ${TARGET_KERNEL_VERSION} add vgem/$VERSION | [ "$FORCE" != "" ]
+	echo
     dkms -k ${TARGET_KERNEL_VERSION} build vgem/$VERSION $FORCE
     dkms -k ${TARGET_KERNEL_VERSION} install vgem/$VERSION $FORCE
 }
