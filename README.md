@@ -25,6 +25,45 @@ This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 
 - (I would appreciate it if you could report the issue to the issue tracker)
 
+## Usage
+
+```bash
+staralt/dxgkrnl-dkms v2025.04 (https://git.staralt.dev/dxgkrnl-dkms)
+
+Usage:
+    ./install.sh [opts]                 Install a module
+
+    ./install.sh clean all              Remove all modules
+    ./install.sh clean [module ver]     Remove a specific version module
+
+Options:
+    -k | --kernel [kernel ver]          Select a kernel to install modules (default: 6.11.0-1012-azure)
+
+    -g | --install-vgem                 Install vgem to use hardware acceleration
+    -n | --no-install-dependencies      Do not install dependencies before build
+    -f | --force                        Force install a module even if it already exists
+
+    -? | -h | --help                    Print help
+
+```
+
+---
+
+Example 1: Install dxgkrnl to current kernel
+```bash
+curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -es
+```
+
+Example 2: Install dxgkrnl **without dependencies** to ``6.11.0-1012-azure`` kernel 
+```bash
+curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -es -- -v 6.11.0-1012-azure -n
+```
+
+Example 3: Clean
+```bash
+curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash -es -- clean all
+```
+
 ## Instructions
 
 ### 1. Enable GPU-P
