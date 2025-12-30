@@ -38,19 +38,24 @@ $vm = "ENTER YOUR VM NAME"
 Remove-VMGpuPartitionAdapter -VMName $vm
 
 # Add GPU-P adapter
-Add-VMGpuPartitionAdapter -VMName $vm
+$gpu_list = Get-VMHostPartitionableGpu
+foreach ($k in $gpu_list){
+    $instance_path = $k.Name
+    $instance_path
+    Add-VMGpuPartitionAdapter -VMName $vm -InstancePath $instance_path
+}
 Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionVRAM 1
-Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionVRAM 11
-Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionVRAM 10
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionVRAM 900000000
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionVRAM 900000000
 Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionEncode 1
-Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionEncode 11
-Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionEncode 10
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionEncode 16602000000000000000
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionEncode 16602000000000000000
 Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionDecode 1
-Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionDecode 11
-Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionDecode 10
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionDecode 900000000
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionDecode 900000000
 Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionCompute 1
-Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionCompute 11
-Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionCompute 10
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionCompute 900000000
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionCompute 900000000
 Set-VM -GuestControlledCacheTypes $true -VMName $vm
 Set-VM -LowMemoryMappedIoSpace 1Gb -VMName $vm
 Set-VM -HighMemoryMappedIoSpace 32GB -VMName $vm
