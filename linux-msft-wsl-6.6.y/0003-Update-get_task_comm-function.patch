@@ -1,0 +1,14 @@
+--- /drivers/hv/dxgkrnl/dxgvmbus.c
++++ /drivers/hv/dxgkrnl/dxgvmbus.c
+@@ -689,7 +689,11 @@
+ 	command->process_id = process->pid;
+ 	command->linux_process = 1;
+ 	s[0] = 0;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,13,0)
++	get_task_comm(s, current);
++#else
+ 	__get_task_comm(s, WIN_MAX_PATH, current);
++#endif
+ 	for (i = 0; i < WIN_MAX_PATH; i++) {
+ 		command->process_name[i] = s[i];
+ 		if (s[i] == 0)

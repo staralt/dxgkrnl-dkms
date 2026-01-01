@@ -1,0 +1,27 @@
+--- /drivers/hv/dxgkrnl/dxgsyncfile.c
++++ /drivers/hv/dxgkrnl/dxgsyncfile.c
+@@ -455,6 +455,7 @@
+ 	return true;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ static void dxgdmafence_value_str(struct dma_fence *fence,
+ 				  char *str, int size)
+ {
+@@ -469,6 +470,7 @@
+ 	syncpoint = to_syncpoint(fence);
+ 	snprintf(str, size, "%lld", syncpoint->fence_value);
+ }
++#endif
+ 
+ static const struct dma_fence_ops dxgdmafence_ops = {
+ 	.get_driver_name = dxgdmafence_get_driver_name,
+@@ -476,6 +478,8 @@
+ 	.enable_signaling = dxgdmafence_enable_signaling,
+ 	.signaled = dxgdmafence_signaled,
+ 	.release = dxgdmafence_release,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ 	.fence_value_str = dxgdmafence_value_str,
+ 	.timeline_value_str = dxgdmafence_timeline_value_str,
++#endif
+ };

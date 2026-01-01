@@ -1,0 +1,10 @@
+--- /drivers/gpu/drm/vgem/vgem_drv.c
++++ /drivers/gpu/drm/vgem/vgem_drv.c
+@@ -121,7 +121,6 @@
+ 
+ 	.name	= DRIVER_NAME,
+ 	.desc	= DRIVER_DESC,
+-	.date	= DRIVER_DATE,
+ 	.major	= DRIVER_MAJOR,
+ 	.minor	= DRIVER_MINOR,
+ };
