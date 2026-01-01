@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-echo "staralt/dxgkrnl-dkms v2025.04 (https://git.staralt.dev/dxgkrnl-dkms)"
+echo "staralt/dxgkrnl-dkms v1.0 2025.01 (https://git.staralt.dev/dxgkrnl-dkms)"
 echo
 
 WORKDIR="$(dirname $(realpath $0))"
@@ -84,6 +84,9 @@ install_dependencies() {
     if [ ! -e "/sbin/dkms" ] && [ ! -e "/bin/dkms" ] && [ ! -e "/usr/bin/dkms" ]; then
         NEED_TO_INSTALL="$NEED_TO_INSTALL dkms"
     fi
+    if [ ! -e "/bin/grep" ] && [ ! -e "/usr/bin/grep" ]; then
+        NEED_TO_INSTALL="$NEED_TO_INSTALL grep"
+    fi
     if [ ! -e "/usr/src/linux-headers-${TARGET_KERNEL_VERSION}" ]; then
         NEED_TO_INSTALL="$NEED_TO_INSTALL linux-headers-${TARGET_KERNEL_VERSION}";
     fi
@@ -94,7 +97,7 @@ install_dependencies() {
     fi
 
     if [[ "$LINUX_DISTRO" == *"debian"* ]]; then
-        apt update;
+        apt update || true;
         apt install -y $NEED_TO_INSTALL;
     elif [[ "$LINUX_DISTRO" == *"fedora"* ]]; then
         yum -y install $NEED_TO_INSTALL;
@@ -136,7 +139,15 @@ get_version() {
     cd /tmp/WSL2-Linux-Kernel
 
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    VERSION=$(git rev-parse --short HEAD)
+    COMMIT_VERSION=$(git rev-parse --short HEAD)
+    case $CURRENT_BRANCH in
+        "linux-msft-wsl-5.15.y")
+            VERSION="5.15-${COMMIT_VERSION}"
+            ;;
+        "linux-msft-wsl-6.6.y")
+            VERSION="6.6-${COMMIT_VERSION}"
+            ;;
+    esac
 }
 
 install_dxgkrnl() {
@@ -161,7 +172,10 @@ install_dxgkrnl() {
             done
             ;;
         "linux-msft-wsl-6.6.y")
-            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch";
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
+                    linux-msft-wsl-6.6.y/0003-Update-get_task_comm-function.patch \
+                    linux-msft-wsl-6.6.y/0004-Fix-timer-related-error.patch \
+                    linux-msft-wsl-6.6.y/0005-Fix-pointer-casting-error-in-dxgsyncfile.c.patch";
             if [[ "$TARGET_KERNEL_VERSION" != *"truenas"* ]]; then
                 PATCHES="$PATCHES linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
             fi
@@ -181,19 +195,30 @@ install_dxgkrnl() {
             exit 1;;
     esac
 
+    mkdir -p /usr/src/dxgkrnl-$VERSION;
+
     # Copy source files
     echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/drivers/hv/dxgkrnl\" -> \"/usr/src/dxgkrnl-$VERSION\""
-    cp -r ./drivers/hv/dxgkrnl /usr/src/dxgkrnl-$VERSION
+    cp -rf ./drivers/hv/dxgkrnl/* /usr/src/dxgkrnl-$VERSION/
 
     # Copy include files
     echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/include\" -> \"/usr/src/dxgkrnl-$VERSION/include\""
-    cp -r ./include /usr/src/dxgkrnl-$VERSION/include
+    cp -rf ./include /usr/src/dxgkrnl-$VERSION/
 
     # Patch a Makefile
     sed -i 's/\$(CONFIG_DXGKRNL)/m/' /usr/src/dxgkrnl-$VERSION/Makefile
-    echo "EXTRA_CFLAGS=-I\$(PWD)/include -D_MAIN_KERNEL_ \
-                       -I/usr/src/linux-headers-\${kernelver}/include/linux \
-                       -include /usr/src/linux-headers-\${kernelver}/include/linux/vmalloc.h" >> /usr/src/dxgkrnl-$VERSION/Makefile # !important
+    cat >> /usr/src/dxgkrnl-$VERSION/Makefile << EOF
+ifeq (\$(shell echo \${kernelver} | egrep "\+deb[0-9]+"),)
+    KERNEL_INCLUDE_PATH	= /lib/modules/\${kernelver}/build/include
+else
+    KERNEL_INCLUDE_PATH	= /lib/modules/\${kernelver}/source/include
+endif
+
+EXTRA_CFLAGS	+= -I\$(PWD)/include -D_MAIN_KERNEL_ -I\${KERNEL_INCLUDE_PATH}/linux -include \${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
+ccflags-y	+= \${EXTRA_CFLAGS}
+EOF
+
+
 
     if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
         BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
@@ -213,29 +238,55 @@ BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 
     echo
-    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION | [ "$FORCE" != "" ]
+    dkms -k ${TARGET_KERNEL_VERSION} add dxgkrnl/$VERSION || true
 	echo
-    dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION $FORCE
-    dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION $FORCE
+    dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION --force
+    dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION --force
 }
 
 
 install_vgem() {
     cd /tmp/WSL2-Linux-Kernel
 
+    case $CURRENT_BRANCH in
+        "linux-msft-wsl-6.6.y")
+            PATCHES="linux-msft-wsl-6.6.y/vgem/0001-Do-not-set-the-deprecated-drm_driver-param.patch \
+                    linux-msft-wsl-6.6.y/vgem/0002-Fix-timer-related-error.patch";
+            
+            for PATCH in $PATCHES; do
+                # Patch source files
+                if [ -e "$WORKDIR/$PATCH" ]; then
+                    cat "$WORKDIR/$PATCH" | git apply -v;
+                else
+                    curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
+                fi
+                echo;
+            done
+            ;;
+    esac
+
+    mkdir -p /usr/src/vgem-$VERSION;
+
     # Copy source files
     echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/drivers/gpu/drm/vgem\" -> \"/usr/src/vgem-$VERSION\""
-    cp -r ./drivers/gpu/drm/vgem /usr/src/vgem-$VERSION
+    cp -rf ./drivers/gpu/drm/vgem/* /usr/src/vgem-$VERSION/
 
     # Copy include files
-   # echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/include\" -> \"/usr/src/vgem-$VERSION/include\""
+    #echo -e "Copy: \n  \"/tmp/WSL2-Linux-Kernel/include\" -> \"/usr/src/vgem-$VERSION/include\""
     #cp -r ./include /usr/src/vgem-$VERSION/include
 
     # Patch a Makefile
     sed -i 's/\$(CONFIG_DRM_VGEM)/m/' /usr/src/vgem-$VERSION/Makefile
-    echo "EXTRA_CFLAGS=-D_MAIN_KERNEL_ \
-                       -I/usr/src/linux-headers-\${kernelver}/include/linux \
-                       -include /usr/src/linux-headers-\${kernelver}/include/linux/vmalloc.h" >> /usr/src/vgem-$VERSION/Makefile # !important
+    cat >> /usr/src/vgem-$VERSION/Makefile << EOF
+ifeq (\$(shell echo \${kernelver} | egrep "\+deb[0-9]+"),)
+    KERNEL_INCLUDE_PATH	= /lib/modules/\${kernelver}/build/include
+else
+    KERNEL_INCLUDE_PATH	= /lib/modules/\${kernelver}/source/include
+endif
+
+EXTRA_CFLAGS	= -I\$(PWD)/include -D_MAIN_KERNEL_ -I\${KERNEL_INCLUDE_PATH}/linux -include \${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
+ccflags-y	+= \${EXTRA_CFLAGS}
+EOF
 
     if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
         BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
@@ -255,10 +306,10 @@ BUILD_EXCLUSIVE_KERNEL="$BUILD_EXCLUSIVE_KERNEL"
 EOF
 
     echo
-    dkms -k ${TARGET_KERNEL_VERSION} add vgem/$VERSION | [ "$FORCE" != "" ]
+    dkms -k ${TARGET_KERNEL_VERSION} add vgem/$VERSION || true
 	echo
-    dkms -k ${TARGET_KERNEL_VERSION} build vgem/$VERSION $FORCE
-    dkms -k ${TARGET_KERNEL_VERSION} install vgem/$VERSION $FORCE
+    dkms -k ${TARGET_KERNEL_VERSION} build vgem/$VERSION --force
+    dkms -k ${TARGET_KERNEL_VERSION} install vgem/$VERSION --force
 }
 
 all() {
@@ -271,18 +322,20 @@ all() {
     echo -e "Target Kernel Version: ${TARGET_KERNEL_VERSION}\n"
 
     if [ "$INSTALL_DEPENDENCIES" == "Y" ]; then
-		sleep 2;
         echo -e "Installing dependencies...\n"
         install_dependencies
     else
 		if [ ! -e "/sbin/dkms" ]; then
-			>&2 echo -e "Fatal: Dkms is not installed.\n"
+			>&2 echo -e "Fatal: dkms is not installed.\n"
 			exit 1;
 		elif [ ! -e "/bin/git" ] || [ ! -e "/usr/bin/git" ]; then
-			>&2 echo -e "Fatal: Git is not installed.\n"
+			>&2 echo -e "Fatal: git is not installed.\n"
+			exit 1;
+        elif [ ! -e "/bin/grep" ] || [ ! -e "/usr/bin/grep" ]; then
+			>&2 echo -e "Fatal: grep is not installed.\n"
 			exit 1;
 		elif [ ! -e "/usr/src/linux-headers-${TARGET_KERNEL_VERSION}" ]; then
-			>&2 echo -e "Fatal: Header file (/usr/src/linux-headers-${TARGET_KERNEL_VERSION}) does not exist.\n"
+			>&2 echo -e "Fatal: Header file (/usr/src/linux-headers-${TARGET_KERNEL_VERSION}) is missing.\n"
 			exit 1;
 		fi
 	fi
@@ -290,13 +343,45 @@ all() {
     update_git
     get_version
 
-    echo -e "\nModule Version: ${CURRENT_BRANCH} @ ${VERSION}\n"
-    echo -e "Installing dxgkrnl module. Please wait...\n"
-    install_dxgkrnl
+    echo -e "\nModule Version: ${CURRENT_BRANCH} @ ${COMMIT_VERSION}\n"
+
+    if [[ -z "$FORCE" ]] && [ -e /usr/src/dxgkrnl-$VERSION ] && [[ "`dkms status dxgkrnl`" == "dxgkrnl/$VERSION"* ]]; then
+        read -r -p "The dxgkrnl module version is already installed. Overwrite? [y/N]" response
+        case "$response" in
+            [yY])
+                echo -e "Installing dxgkrnl module. Please wait...\n"
+                install_dxgkrnl
+                ;;
+            *)
+                dkms -k ${TARGET_KERNEL_VERSION} build dxgkrnl/$VERSION
+                dkms -k ${TARGET_KERNEL_VERSION} install dxgkrnl/$VERSION
+                ;;
+        esac
+    else 
+        echo -e "Installing dxgkrnl module. Please wait...\n"
+        install_dxgkrnl
+    fi
+
+
+
 
     if [ "$INSTALL_VGEM" == "Y" ]; then
-        echo -e "\nInstalling vgem module. Please wait...\n"
-        install_vgem 
+        if [[ -z "$FORCE" ]] && [ -e /usr/src/vgem-$VERSION ] && [[ "`dkms status vgem`" == "vgem/$VERSION"* ]]; then
+            read -r -p "The vgem module version is already installed. Overwrite? [y/N]" response
+            case "$response" in
+                [yY])
+                    echo -e "\nInstalling vgem module. Please wait...\n"
+                    install_vgem 
+                    ;;
+                *)
+                    dkms -k ${TARGET_KERNEL_VERSION} build vgem/$VERSION
+                    dkms -k ${TARGET_KERNEL_VERSION} install vgem/$VERSION
+                    ;;
+            esac
+        else
+            echo -e "\nInstalling vgem module. Please wait...\n"
+            install_vgem
+        fi
     fi
 }
 
@@ -321,7 +406,7 @@ help() {
 
 clean() {
     if [[ ! -e /sbin/dkms ]]; then
-        >&2 echo -e "Fatal: Dkms is not installed.\n"
+        >&2 echo -e "Fatal: dkms is not installed.\n"
         exit 1
     fi
 
@@ -332,8 +417,8 @@ clean() {
         echo
         exit 0
     elif [ "$1" == "all" ]; then
-        TARGETS=`dkms status dxgkrnl | grep -E "dxgkrnl/[a-z0-9]+" -o | awk '!a[$0]++'`
-        VGEM_TARGETS=`dkms status vgem | grep -E "vgem/[a-z0-9]+" -o | awk '!a[$0]++'`
+        TARGETS=`dkms status dxgkrnl | grep -P 'dxgkrnl/[a-zA-Z0-9.\-_+]+(?<!,)' -o | awk '!a[$0]++'`
+        VGEM_TARGETS=`dkms status vgem | grep -P 'vgem/[a-zA-Z0-9.\-_+]+(?<!,)' -o | awk '!a[$0]++'`
         if [ -z "$TARGETS" ] && [ -z "$VGEM_TARGETS" ]; then
             echo "Ignored. There is no modules to clean."
             exit 0

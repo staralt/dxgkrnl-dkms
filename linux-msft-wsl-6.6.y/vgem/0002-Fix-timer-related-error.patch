@@ -1,0 +1,59 @@
+--- /drivers/gpu/drm/vgem/vgem_fence.c
++++ /drivers/gpu/drm/vgem/vgem_fence.c
+@@ -27,6 +27,8 @@
+ 
+ #include "vgem_drv.h"
+ 
++#include <linux/version.h>
++
+ #define VGEM_FENCE_TIMEOUT (10*HZ)
+ 
+ struct vgem_fence {
+@@ -49,34 +51,47 @@
+ {
+ 	struct vgem_fence *fence = container_of(base, typeof(*fence), base);
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ 	del_timer_sync(&fence->timer);
++#else
++	timer_delete_sync(&fence->timer);
++#endif
+ 	dma_fence_free(&fence->base);
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ static void vgem_fence_value_str(struct dma_fence *fence, char *str, int size)
+ {
+ 	snprintf(str, size, "%llu", fence->seqno);
+ }
+ 
++
+ static void vgem_fence_timeline_value_str(struct dma_fence *fence, char *str,
+ 					  int size)
+ {
+ 	snprintf(str, size, "%llu",
+ 		 dma_fence_is_signaled(fence) ? fence->seqno : 0);
+ }
++#endif
+ 
+ static const struct dma_fence_ops vgem_fence_ops = {
+ 	.get_driver_name = vgem_fence_get_driver_name,
+ 	.get_timeline_name = vgem_fence_get_timeline_name,
+ 	.release = vgem_fence_release,
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ 	.fence_value_str = vgem_fence_value_str,
+ 	.timeline_value_str = vgem_fence_timeline_value_str,
++#endif
+ };
+ 
+ static void vgem_fence_timeout(struct timer_list *t)
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0)
+ 	struct vgem_fence *fence = from_timer(fence, t, timer);
++#else
++	struct vgem_fence *fence = container_of(t, typeof(*fence), timer);
++#endif
+ 
+ 	dma_fence_signal(&fence->base);
+ }

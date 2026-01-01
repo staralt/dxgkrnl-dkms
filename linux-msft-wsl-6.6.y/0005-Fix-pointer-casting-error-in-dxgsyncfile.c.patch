@@ -1,0 +1,15 @@
+--- /drivers/hv/dxgkrnl/dxgsyncfile.c
++++ /drivers/hv/dxgkrnl/dxgsyncfile.c
+@@ -446,8 +446,12 @@
+ 	syncpoint = to_syncpoint(fence);
+ 	if (syncpoint == 0)
+ 		return true;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,17,0)
+ 	return __dma_fence_is_later(syncpoint->fence_value, fence->seqno,
+ 				    fence->ops);
++#else
++	return __dma_fence_is_later(fence, syncpoint->fence_value, fence->seqno);
++#endif
+ }
+ 
+ static bool dxgdmafence_enable_signaling(struct dma_fence *fence)

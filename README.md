@@ -7,11 +7,17 @@ This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 ### Available on
 
 - Ubuntu | Ubuntu Server
-   - 24.04 LTS @ 6.8.0 - 6.12.0
+   - 24.04 LTS @ 6.8.0 - 6.14.0 (6.17 can be installed, but is untested)
    - 22.04 LTS @ 5.15.0 - 6.5.0
+
+- Debian
+	- 13 (trixie)
+		- 6.12.57+deb13 (unverified)
+		- 6.17.8+deb13 (unverified)
 
 -  TrueNAS SCALE
    - 23.10.2 @ 6.6.44-production+truenas
+
 
 ### Requirements
 
@@ -28,7 +34,7 @@ This project makes it simple to use GPU-P on Linux with the latest kernel VM. 
 ## Usage
 
 ```bash
-staralt/dxgkrnl-dkms v2025.04 (https://git.staralt.dev/dxgkrnl-dkms)
+staralt/dxgkrnl-dkms v1.0 2025.01 (https://git.staralt.dev/dxgkrnl-dkms)
 
 Usage:
     ./install.sh [opts]                 Install a module
