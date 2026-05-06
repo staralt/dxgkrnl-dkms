@@ -7,7 +7,8 @@ WORKDIR="$(dirname $(realpath $0))"
 LINUX_DISTRO="$(cat /etc/*-release)"
 LINUX_DISTRO=${LINUX_DISTRO,,}
 
-KERNEL_6_6_NEWER_REGEX="^(6\.[6-9]\.|6\.[0-9]{2,}\.)"
+KERNEL_6_18_OR_NEWER_REGEX="^(6\.1[8-9]\.|7\.[0-9]{1,2}\.)"
+KERNEL_6_6_NEWER_REGEX="^(6\.[6-9]\.|6\.1[0-7]\.)"
 KERNEL_5_15_NEWER_REGEX="^(5\.1[5-9]+\.)"
 
 INSTALL_DEPENDENCIES='Y'
@@ -112,10 +113,15 @@ install_dependencies() {
 }
 
 update_git() {
-    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
+    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_18_OR_NEWER_REGEX ]]; then
+        TARGET_BRANCH="linux-msft-wsl-6.18.y";
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_18_OR_NEWER_REGEX;
+    elif [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-6.6.y";
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX;
     elif [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_5_15_NEWER_REGEX ]]; then
         TARGET_BRANCH="linux-msft-wsl-5.15.y";
+        BUILD_EXCLUSIVE_KERNEL=$KERNEL_5_15_NEWER_REGEX
     else
         >&2 echo "Fatal: Unsupported kernel version (5.15.0 <=)";
         exit 1;
@@ -147,6 +153,9 @@ get_version() {
         "linux-msft-wsl-6.6.y")
             VERSION="6.6-${COMMIT_VERSION}"
             ;;
+        "linux-msft-wsl-6.18.y")
+            VERSION="6.18-${COMMIT_VERSION}"
+            ;;
     esac
 }
 
@@ -160,16 +169,6 @@ install_dxgkrnl() {
             if [[ "$TARGET_KERNEL_VERSION" != *"azure"* ]]; then
                     PATCHES="$PATCHES linux-msft-wsl-5.15.y/0003-Fix-gpadl-has-incomplete-type-error.patch";
             fi
-            
-            for PATCH in $PATCHES; do
-                # Patch source files
-                if [ -e "$WORKDIR/$PATCH" ]; then
-                    cat "$WORKDIR/$PATCH" | git apply -v;
-                else
-                    curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
-                fi
-                echo;
-            done
             ;;
         "linux-msft-wsl-6.6.y")
             PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
@@ -179,21 +178,24 @@ install_dxgkrnl() {
             if [[ "$TARGET_KERNEL_VERSION" != *"truenas"* ]]; then
                 PATCHES="$PATCHES linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
             fi
-
-            for PATCH in $PATCHES; do
-                # Patch source files
-                if [ -e "$WORKDIR/$PATCH" ]; then
-                    cat "$WORKDIR/$PATCH" | git apply -v;
-                else
-                    curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
-                fi
-                echo;
-            done
+            ;;
+        "linux-msft-wsl-6.18.y")
+            PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch";
             ;;
         *)
             >&2 echo "Fatal: \"$CURRENT_BRANCH\" is not available";
             exit 1;;
     esac
+
+    for PATCH in $PATCHES; do
+        # Patch source files
+        if [ -e "$WORKDIR/$PATCH" ]; then
+            cat "$WORKDIR/$PATCH" | git apply -v;
+        else
+            curl -fsSL "https://content.staralt.dev/dxgkrnl-dkms/main/$PATCH" | git apply -v;
+        fi
+        echo;
+    done
 
     mkdir -p /usr/src/dxgkrnl-$VERSION;
 
@@ -217,14 +219,6 @@ endif
 EXTRA_CFLAGS	+= -I\$(PWD)/include -D_MAIN_KERNEL_ -I\${KERNEL_INCLUDE_PATH}/linux -include \${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
 ccflags-y	+= \${EXTRA_CFLAGS}
 EOF
-
-
-
-    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
-        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
-    else
-        BUILD_EXCLUSIVE_KERNEL=$KERNEL_5_15_NEWER_REGEX
-    fi
 
     # Create a config of DKMS
     # https://gist.github.com/krzys-h/e2def49966aa42bbd3316dfb794f4d6a
@@ -287,12 +281,6 @@ endif
 EXTRA_CFLAGS	= -I\$(PWD)/include -D_MAIN_KERNEL_ -I\${KERNEL_INCLUDE_PATH}/linux -include \${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
 ccflags-y	+= \${EXTRA_CFLAGS}
 EOF
-
-    if [[ "${TARGET_KERNEL_VERSION}" =~ $KERNEL_6_6_NEWER_REGEX ]]; then
-        BUILD_EXCLUSIVE_KERNEL=$KERNEL_6_6_NEWER_REGEX
-    else
-        BUILD_EXCLUSIVE_KERNEL=$KERNEL_5_15_NEWER_REGEX
-    fi
 
     # Create a config of DKMS
     # https://gist.github.com/krzys-h/e2def49966aa42bbd3316dfb794f4d6a
