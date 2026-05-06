@@ -1,0 +1,20 @@
+--- /drivers/hv/dxgkrnl/dxgvmbus.c
++++ /drivers/hv/dxgkrnl/dxgvmbus.c
+@@ -600,7 +600,7 @@
+ 		return NULL;
+ 	}
+ 
+-	mmap_read_lock(current->mm);
++   mmap_write_lock(current->mm);
+ 	vma = find_vma(current->mm, (unsigned long)va);
+ 	if (vma) {
+ 		pgprot_t prot = vma->vm_page_prot;
+@@ -618,7 +618,7 @@
+ 		DXG_ERR("failed to find vma: %p %lx", vma, va);
+ 		ret = -ENOMEM;
+ 	}
+-	mmap_read_unlock(current->mm);
++	mmap_write_unlock(current->mm);
+ 
+ 	if (ret) {
+ 		dxg_unmap_iospace((void *)va, size);

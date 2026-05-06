@@ -174,7 +174,8 @@ install_dxgkrnl() {
             PATCHES="linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch \
                     linux-msft-wsl-6.6.y/0003-Update-get_task_comm-function.patch \
                     linux-msft-wsl-6.6.y/0004-Fix-timer-related-error.patch \
-                    linux-msft-wsl-6.6.y/0005-Fix-pointer-casting-error-in-dxgsyncfile.c.patch";
+                    linux-msft-wsl-6.6.y/0005-Fix-pointer-casting-error-in-dxgsyncfile.c.patch \
+                    linux-msft-wsl-6.6.y/0006-mmap_write_lock-before-remap_pfn_range.patch";
             if [[ "$TARGET_KERNEL_VERSION" != *"truenas"* ]]; then
                 PATCHES="$PATCHES linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch";
             fi
